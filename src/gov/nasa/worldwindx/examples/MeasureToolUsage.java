@@ -36,7 +36,7 @@ public class MeasureToolUsage extends ApplicationTemplate
 
         public AppFrame()
         {
-            super(true, true, false); // no layer or statistics panel
+            super(true, false, false); // no layer or statistics panel
 
             // Add terrain profile layer
             profile.setEventSource(getWwd());
@@ -49,6 +49,7 @@ public class MeasureToolUsage extends ApplicationTemplate
             tabbedPane.setTitleAt(0, "+");
             tabbedPane.addChangeListener(new ChangeListener()
             {
+                // 点击"+"按钮 添加一个Measure Panel时触发
                 public void stateChanged(ChangeEvent changeEvent)
                 {
                     if (tabbedPane.getSelectedIndex() == 0)
@@ -76,7 +77,15 @@ public class MeasureToolUsage extends ApplicationTemplate
             tabbedPane.setSelectedIndex(1);
             switchMeasureTool();
 
-            this.getControlPanel().add(tabbedPane, BorderLayout.EAST);
+            // 不显示层管理器面板的时候，容错处理。
+            if (getControlPanel() == null) {
+                this.controlPanel = new JPanel(new BorderLayout(10, 10));
+                this.controlPanel.add(tabbedPane, BorderLayout.EAST);
+                this.getContentPane().add(this.controlPanel, BorderLayout.WEST);
+            } else {
+                this.getControlPanel().add(tabbedPane, BorderLayout.EAST);
+            }
+
             this.pack();
         }
 
