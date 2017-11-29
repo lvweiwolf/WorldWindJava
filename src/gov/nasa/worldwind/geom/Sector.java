@@ -24,13 +24,20 @@ import java.util.*;
  * on the angles by this class, nor is it verified by the class' methods. See {@link Angle} for a description of
  * specifying angles. <p/> <code>Sector</code> instances are immutable. </p>
  *
+ * Sector代表纬度和经度的一个长方形区域。该区域由四角度定义: 最小和最大纬度, 最小和最大经度。假设这些角度被转化为 +/-90 度纬度和 +/-180 度经度。
+ * 最小和最大值是相对于这些范围, 例如,-80 小于20。类的行为在这些范围之外的角度是未定义的。规范化不是由该类的角度执行的, 也不是由类的方法验证的。
+ * 有关指定角度的说明, 请参见角度。
+ *
  * @author Tom Gaskins
  * @version $Id: Sector.java 2397 2014-10-28 17:13:04Z dcollins $
  * @see Angle
  */
 public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
 {
-    /** A <code>Sector</code> of latitude [-90 degrees, + 90 degrees] and longitude [-180 degrees, + 180 degrees]. */
+    /**
+     *  A <code>Sector</code> of latitude [-90 degrees, + 90 degrees] and longitude [-180 degrees, + 180 degrees].
+     *  一个纬度区段 [-90 度, + 90 度] 和经度 [-180 度, + 180 度]。
+     */
     public static final Sector FULL_SPHERE = new Sector(Angle.NEG90, Angle.POS90, Angle.NEG180, Angle.POS180);
     public static final Sector EMPTY_SECTOR = new Sector(Angle.ZERO, Angle.ZERO, Angle.ZERO, Angle.ZERO);
 
@@ -355,6 +362,8 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
     /**
      * Returns a new <code>Sector</code> encompassing a circle centered at a given position, with a given radius in
      * meter.
+     *
+     * 返回一个新扇区, 包含一个以给定位置为中心的圆, 其半径为米。
      *
      * @param globe  a Globe instance.
      * @param center the circle center position.
@@ -693,6 +702,8 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
     /**
      * Computes the Cartesian coordinates of a Sector's center.
      *
+     * 计算扇形中心的笛卡尔坐标。
+     *
      * @param globe        The globe associated with the sector.
      * @param exaggeration The vertical exaggeration to apply.
      *
@@ -719,6 +730,8 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
 
     /**
      * Computes the Cartesian coordinates of a Sector's corners.
+     *
+     * 计算扇形角的笛卡尔坐标。
      *
      * @param globe        The globe associated with the sector.
      * @param exaggeration The vertical exaggeration to apply.
@@ -752,6 +765,8 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
 
     /**
      * Returns a sphere that minimally surrounds the sector at a specified vertical exaggeration.
+     *
+     * 返回一个在特定的垂直放大比例范围内最小包围扇区的球体。
      *
      * @param globe                the globe the sector is associated with
      * @param verticalExaggeration the vertical exaggeration to apply to the globe's elevations when computing the
@@ -803,8 +818,11 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
      * the minimum and maximum elevation are equal, this assumes a maximum elevation of 10 + the minimum. If this fails
      * to compute a box enclosing the sector, this returns a unit box enclosing one of the boxes corners.
      *
+     * 返回一个框, 在指定的地球仪的表面上限定指定扇区。根据指定的垂直放大比例和全球在该扇区的最低和最高海拔, 返回的方框将地球表面的地形包围在该区。
+     * 如果最小和最大高程相等, 则假定最大海拔为 10 + 最小。如果此操作无法计算封闭扇区的框, 则返回一个包含其中一个方框角的单元框。
+     *
      * @param globe                the globe the extent relates to.
-     * @param verticalExaggeration the globe's vertical surface exaggeration.
+     * @param verticalExaggeration the globe's vertical surface exaggeration. 地球的垂直表面放大比例。
      * @param sector               a sector on the globe's surface to compute a bounding box for.
      *
      * @return a box enclosing the globe's surface on the specified sector.
@@ -837,6 +855,9 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
      * according to the specified vertical exaggeration, minimum elevation, and maximum elevation. If the minimum and
      * maximum elevation are equal, this assumes a maximum elevation of 10 + the minimum. If this fails to compute a box
      * enclosing the sector, this returns a unit box enclosing one of the boxes corners.
+     *
+     * 返回一个框, 在指定的地球仪的表面上限定指定扇区。返回的方块根据指定的垂直放大比例、最小海拔和最大海拔, 将地球表面的地形包围在扇形中。
+     * 如果最小和最大高程相等, 则假定最大海拔为 10 + 最小。如果此操作无法计算封闭扇区的框, 则返回一个包含其中一个方框角的单元框。
      *
      * @param globe                the globe the extent relates to.
      * @param verticalExaggeration the globe's vertical surface exaggeration.
@@ -897,6 +918,8 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
 
     /**
      * Returns a cylinder that minimally surrounds the specified sector at a specified vertical exaggeration.
+     *
+     * 返回一个在指定的垂直放大比例下最小包围指定扇区的圆柱体。
      *
      * @param globe                The globe associated with the sector.
      * @param verticalExaggeration the vertical exaggeration to apply to the minimum and maximum elevations when
@@ -1047,6 +1070,8 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
      * Determines whether a latitude/longitude position is within the sector. The sector's angles are assumed to be
      * normalized to +/- 90 degrees latitude and +/- 180 degrees longitude. The result of the operation is undefined if
      * they are not.
+     *
+     * 确定纬度/经度位置是否在扇区内。该扇区的角度被认为是正常化为 +/-90 度纬度和 +/-180 度经度。如果未定义操作的结果, 则不确定。
      *
      * @param latLon the position to test, with angles normalized to +/- &#960 latitude and +/- 2&#960 longitude.
      *
@@ -1475,6 +1500,9 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
      * specified point and this sector's corner points or its center point. The draw context defines the globe and the
      * elevations that are used to compute the corner points and the center point.
      *
+     * 返回此扇区定义的曲面几何与指定模型坐标点之间的模型坐标距离的近似值。返回的值表示指定点与该扇区的角点或其中心点之间的最短距离。
+     * 绘制上下文定义了用于计算角点和中心点的地球仪和高程。
+     *
      * @param dc    The draw context defining the surface geometry.
      * @param point The model coordinate point to compute a distance to.
      *
@@ -1589,9 +1617,12 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
      * Compares this sector to a specified sector according to their minimum latitude, minimum longitude, maximum
      * latitude, and maximum longitude, respectively.
      *
+     * 根据最小纬度、最小经度、最大纬度和最大经度分别将此扇区与指定扇区进行比较。
+     *
      * @param that the <code>Sector</code> to compareTo with <code>this</code>.
      *
      * @return -1 if this sector compares less than that specified, 0 if they're equal, and 1 if it compares greater.
+     *          -1 如果此扇区比较小于指定值, 则为 0, 如果它们相等, 则为 1 (如果比较大)。
      *
      * @throws IllegalArgumentException if <code>that</code> is null
      */
@@ -1684,6 +1715,8 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
     /**
      * Returns the coordinates of the sector as a list, in the order minLat, maxLat, minLon, maxLon.
      *
+     * 返回该扇区的坐标作为列表, 按顺序 minLat、maxLat、minLon、maxLon。
+     *
      * @return the list of sector coordinates.
      */
     public List<LatLon> asList()
@@ -1702,6 +1735,8 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
      * Returns the coordinates of the sector as an array of values in degrees, in the order minLat, maxLat, minLon,
      * maxLon.
      *
+     * 按 minLat、maxLat、minLon、maxLon 的顺序将扇区的坐标以度值数组的形式返回。
+     *
      * @return the array of sector coordinates.
      */
     public double[] asDegreesArray()
@@ -1716,6 +1751,8 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
     /**
      * Returns the coordinates of the sector as an array of values in radians, in the order minLat, maxLat, minLon,
      * maxLon.
+     *
+     * 按 minLat、maxLat、minLon、maxLon 的顺序将扇区的坐标返回为以弧度表示的值数组。
      *
      * @return the array of sector coordinates.
      */
@@ -1748,10 +1785,13 @@ public class Sector implements Cacheable, Comparable<Sector>, Iterable<LatLon>
     /**
      * Tests the equality of the sectors' angles. Sectors are equal if all of their corresponding angles are equal.
      *
+     * 测试扇区的角度是否相等。如果所有相应的角度相等, 则扇区相等。
+     *
      * @param o the sector to compareTo with <code>this</code>.
      *
      * @return <code>true</code> if the four corresponding angles of each sector are equal, <code>false</code>
      *         otherwise.
+     *         如果每个扇区的四对应角相等, 则为 true, 否则为 false。
      */
     @Override
     public boolean equals(Object o)
