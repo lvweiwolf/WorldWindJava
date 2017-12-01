@@ -123,19 +123,22 @@ public class ColladaViewer extends ApplicationTemplate
 
         final AppFrame af = (AppFrame) start("World Wind COLLADA Viewer", AppFrame.class);
 
-        new WorkerThread(new File("testData/collada/collada.dae"),
-            Position.fromDegrees(40.009993372683, -105.272774533734, 300), af).start();
+        new WorkerThread(new File("testData/collada/rocket.dae"),
+            Position.fromDegrees(40.009993372683, -105.272774533734, 50), af).start();
+
+//        new WorkerThread(new File("testData/collada/collada.dae"),
+//            Position.fromDegrees(40.009993372683, -105.272774533734, 300), af).start();
 
         new WorkerThread(new File("testData/collada/cu_macky/CU Macky.dae"),
             Position.fromDegrees(40.009993372683, -105.272774533734), af).start();
 
-        new WorkerThread(new File("testData/collada/cube_triangulate.dae"),
-            Position.fromDegrees(40.00986517881996, -105.26917924394284, 100), af).start();
-
-        new WorkerThread(new File("testData/collada/sphere_triangulate.dae"),
-            Position.fromDegrees(40.007243654661075, -105.27016308578999, 100), af).start();
-
-        new WorkerThread(new File("testData/collada/duck_triangulate.dae"),
-            Position.fromDegrees(40.00779229910037, -105.27494931422459, 100), af).start();
+//        new WorkerThread(new File("testData/collada/cube_triangulate.dae"),
+//            Position.fromDegrees(40.00986517881996, -105.26917924394284, 100), af).start();
+//
+//        new WorkerThread(new File("testData/collada/sphere_triangulate.dae"),
+//            Position.fromDegrees(40.007243654661075, -105.27016308578999, 100), af).start();
+//
+//        new WorkerThread(new File("testData/collada/duck_triangulate.dae"),
+//            Position.fromDegrees(40.00779229910037, -105.27494931422459, 100), af).start();
     }
 }

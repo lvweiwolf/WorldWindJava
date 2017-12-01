@@ -44,7 +44,7 @@ public class MeasureToolUsage extends ApplicationTemplate
             profile.setShowProfileLine(false);
             insertBeforePlacenames(getWwd(), profile);
 
-            // Add + tab
+            // Add "+" tab
             tabbedPane.add(new JPanel());
             tabbedPane.setTitleAt(0, "+");
             tabbedPane.addChangeListener(new ChangeListener()
@@ -52,15 +52,27 @@ public class MeasureToolUsage extends ApplicationTemplate
                 // 点击"+"按钮 添加一个Measure Panel时触发
                 public void stateChanged(ChangeEvent changeEvent)
                 {
-                    if (tabbedPane.getSelectedIndex() == 0)
+                    if (tabbedPane.getTitleAt(tabbedPane.getSelectedIndex()) == "+")
                     {
                         // Add new measure tool in a tab when '+' selected
                         MeasureTool measureTool = new MeasureTool(getWwd());
                         measureTool.setController(new MeasureToolController());
-                        tabbedPane.add(new MeasureToolPanel(getWwd(), measureTool));
-                        tabbedPane.setTitleAt(tabbedPane.getTabCount() - 1, "" + (tabbedPane.getTabCount() - 1));
-                        tabbedPane.setSelectedIndex(tabbedPane.getTabCount() - 1);
-                        switchMeasureTool();
+                        tabbedPane.add(new MeasureToolPanel(getWwd(), measureTool), tabbedPane.getTabCount() - 1);
+                        tabbedPane.setTitleAt(tabbedPane.getTabCount() - 2, "" + (tabbedPane.getTabCount() - 2));
+                        tabbedPane.setSelectedIndex(tabbedPane.getTabCount() - 2);
+                        //switchMeasureTool();
+                    }
+                    else if (tabbedPane.getTitleAt(tabbedPane.getSelectedIndex()) == "-")
+                    {
+                        // 从后面删除tab项
+                        if (tabbedPane.getTabCount() > 2){
+                            tabbedPane.removeChangeListener(this);
+                            tabbedPane.remove(tabbedPane.getTabCount() - 2);
+                            lastTabIndex = -1; // 重置最后选择项
+                            tabbedPane.addChangeListener(this);
+                            tabbedPane.setSelectedIndex(tabbedPane.getTabCount() - 2);
+                            // switchMeasureTool();
+                        }
                     }
                     else
                     {
@@ -76,6 +88,10 @@ public class MeasureToolUsage extends ApplicationTemplate
             tabbedPane.setTitleAt(1, "1");
             tabbedPane.setSelectedIndex(1);
             switchMeasureTool();
+
+            // 添加 "-" tab项
+            tabbedPane.add(new JPanel());
+            tabbedPane.setTitleAt(tabbedPane.getTabCount() - 1, "-");
 
             // 不显示层管理器面板的时候，容错处理。
             if (getControlPanel() == null) {

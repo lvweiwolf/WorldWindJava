@@ -5,19 +5,25 @@
  */
 package gov.nasa.worldwindx.examples;
 
+import gov.nasa.worldwind.Configuration;
 import gov.nasa.worldwind.WorldWindow;
-import gov.nasa.worldwind.avlist.AVKey;
+import gov.nasa.worldwind.avlist.*;
+import gov.nasa.worldwind.data.ByteBufferRaster;
+import gov.nasa.worldwind.formats.tiff.GeotiffWriter;
 import gov.nasa.worldwind.geom.*;
+import gov.nasa.worldwind.globes.*;
 import gov.nasa.worldwind.render.*;
-import gov.nasa.worldwind.util.UnitsFormat;
+import gov.nasa.worldwind.util.*;
 import gov.nasa.worldwind.util.measure.MeasureTool;
+import gov.nasa.worldwindx.examples.util.MesureToolRunable;
 
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.beans.*;
-import java.util.ArrayList;
+import java.io.*;
+import java.util.*;
 
 /**
 * Control panel for the MeasureTool.
@@ -47,6 +53,8 @@ public class MeasureToolPanel extends JPanel
     private JButton newButton;
     private JButton pauseButton;
     private JButton endButton;
+    private JButton exportButton;
+    private JButton exportImgButton;
     private JLabel[] pointLabels;
     private JLabel lengthLabel;
     private JLabel areaLabel;
@@ -54,6 +62,8 @@ public class MeasureToolPanel extends JPanel
     private JLabel heightLabel;
     private JLabel headingLabel;
     private JLabel centerLabel;
+
+    private JFileChooser fileChooser = null;
 
     private static ArrayList<Position> LINE = new ArrayList<Position>();
     private static ArrayList<Position> PATH = new ArrayList<Position>();
@@ -415,6 +425,34 @@ public class MeasureToolPanel extends JPanel
         buttonPanel.add(endButton);
         endButton.setEnabled(false);
 
+        // 导出地形工具面板
+        JPanel exportPanel = new JPanel(new GridLayout(1, 2, 5, 5));
+        exportPanel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        exportButton = new JButton("Export Evelation");
+        exportButton.addActionListener(new ActionListener()
+        {
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                // 点击按钮触发事件
+                doSaveElevations();
+            }
+        });
+        exportButton.setEnabled(true);  // DEBUG: 独立测试功能
+        exportPanel.add(exportButton);
+
+        exportImgButton = new JButton("Export Image");
+        exportImgButton.addActionListener(new ActionListener()
+        {
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                // 点击按钮触发事件
+            }
+        });
+        exportImgButton.setEnabled(false);
+        exportPanel.add(exportImgButton);
+
         // Preset buttons
         JPanel presetPanel = new JPanel(new GridLayout(1, 2, 5, 5));
         presetPanel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
@@ -509,6 +547,7 @@ public class MeasureToolPanel extends JPanel
         outerPanel.add(checkPanel);
         outerPanel.add(buttonPanel);
         //outerPanel.add(presetPanel);
+        outerPanel.add(exportPanel);
         outerPanel.add(metricPanel);
         outerPanel.add(scrollPane);
 
@@ -594,5 +633,73 @@ public class MeasureToolPanel extends JPanel
         else
             s = "na";
         centerLabel.setText(s);
+    }
+
+    public static class GeotiffFileFilter extends javax.swing.filechooser.FileFilter
+    {
+        public boolean accept(File file)
+        {
+            if (file == null)
+            {
+                String message = Logging.getMessage("nullValue.FileIsNull");
+                Logging.logger().severe(message);
+                throw new IllegalArgumentException(message);
+            }
+
+            return file.isDirectory() || file.getName().toLowerCase().endsWith(".tif");
+        }
+
+        public String getDescription()
+        {
+            return "Geo-TIFF (tif)";
+        }
+    }
+
+    private File selectDestinationFile(String title, String filename) {
+        File destFile = null;
+
+        if (this.fileChooser == null) {
+            this.fileChooser = new JFileChooser();
+            this.fileChooser.setCurrentDirectory(new File(Configuration.getUserHomeDirectory()));
+            this.fileChooser.addChoosableFileFilter(new GeotiffFileFilter());
+        }
+
+        this.fileChooser.setDialogTitle(title);
+        this.fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        this.fileChooser.setMultiSelectionEnabled(false);
+        this.fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
+
+        this.fileChooser.setName(filename);
+
+        int status = this.fileChooser.showSaveDialog(null);
+        if (status == JFileChooser.APPROVE_OPTION) {
+            destFile = this.fileChooser.getSelectedFile();
+            if (!destFile.getName().endsWith(".tif"))
+                destFile = new File(destFile.getPath() + ".tif");
+        }
+
+        return destFile;
+    }
+
+    // 导出选定封闭图形包围的高程数据
+    public void doSaveElevations()
+    {
+        final File saveToFile = this.selectDestinationFile(
+            "Select a destination GeoTiff file to save elevations", "elevation");
+
+        if (saveToFile == null)
+            return;
+
+        final JOptionPane jop = new JOptionPane("Requesting elevations ...",
+            JOptionPane.PLAIN_MESSAGE, JOptionPane.DEFAULT_OPTION, null, new Object[] {}, null);
+
+        final JDialog jd = jop.createDialog(this.getRootPane().getTopLevelAncestor(), "Please wait...");
+        jd.setModal(false);
+        jd.setVisible(true);
+
+        Thread t = new Thread(new MesureToolRunable(wwd, measureTool, jd, this,  saveToFile));
+        this.setCursor(new Cursor(Cursor.WAIT_CURSOR));
+        wwd.redraw();
+        t.start();
     }
 }
