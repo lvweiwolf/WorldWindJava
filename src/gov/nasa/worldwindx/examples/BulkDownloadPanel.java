@@ -153,10 +153,10 @@ public class BulkDownloadPanel extends JPanel
                             // Be aware that the method is not invoked on the event dispatch thread, so any interaction
                             // with AWT or Swing must be within a SwingUtilities.invokeLater() runnable.
 
-                            //System.out.printf("%s: item %s\n",
-                            //    event.getEventType().equals(BulkRetrievalEvent.RETRIEVAL_SUCCEEDED) ? "Succeeded"
-                            //: event.getEventType().equals(BulkRetrievalEvent.RETRIEVAL_FAILED) ? "Failed"
-                            //    : "Unknown event type", event.getItem());
+                            System.out.printf("%s: item %s\n",
+                                event.getEventType().equals(BulkRetrievalEvent.RETRIEVAL_SUCCEEDED) ? "Succeeded"
+                            : event.getEventType().equals(BulkRetrievalEvent.RETRIEVAL_FAILED) ? "Failed"
+                                : "Unknown event type", event.getItem());
                         }
                     });
 

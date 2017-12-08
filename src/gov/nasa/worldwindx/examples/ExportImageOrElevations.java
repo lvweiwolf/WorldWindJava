@@ -292,7 +292,8 @@ public class ExportImageOrElevations extends ApplicationTemplate
                 if (o instanceof TiledImageLayer)
                 {
                     TiledImageLayer layer = (TiledImageLayer) o;
-                    if (layer.isEnabled() && layer.isLayerActive(dc) && layer.isLayerInView(dc))
+                    if (layer.isEnabled() && layer.isLayerActive(dc) && layer.isLayerInView(dc)
+                        && layer.getDefaultImageFormat() != null)
                     {
                         currentLayer = layer;
                     }
