@@ -17,6 +17,7 @@ import gov.nasa.worldwind.layers.*;
 import gov.nasa.worldwind.render.DrawContext;
 import gov.nasa.worldwind.util.Logging;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -170,6 +171,47 @@ public class ExportImageOrElevations extends ApplicationTemplate
             }
         }
 
+        public static class JPEGFileFilter extends javax.swing.filechooser.FileFilter
+        {
+            public boolean accept(File file)
+            {
+                if (file == null)
+                {
+                    String message = Logging.getMessage("nullValue.FileIsNull");
+                    Logging.logger().severe(message);
+                    throw new IllegalArgumentException(message);
+                }
+
+                return file.isDirectory() || file.getName().toLowerCase().endsWith(".jpeg")
+                    || file.getName().toLowerCase().endsWith(".jpg");
+            }
+
+            public String getDescription()
+            {
+                return "JPEG(jpeg)";
+            }
+        }
+
+        public static class PngFileFilter extends javax.swing.filechooser.FileFilter
+        {
+            public boolean accept(File file)
+            {
+                if (file == null)
+                {
+                    String message = Logging.getMessage("nullValue.FileIsNull");
+                    Logging.logger().severe(message);
+                    throw new IllegalArgumentException(message);
+                }
+
+                return file.isDirectory() || file.getName().toLowerCase().endsWith(".png");
+            }
+
+            public String getDescription()
+            {
+                return "PNG(png)";
+            }
+        }
+
         private File selectDestinationFile(String title, String filename)
         {
             File destFile = null;
@@ -178,7 +220,7 @@ public class ExportImageOrElevations extends ApplicationTemplate
             {
                 this.fileChooser = new JFileChooser();
                 this.fileChooser.setCurrentDirectory(new File(Configuration.getUserHomeDirectory()));
-                this.fileChooser.addChoosableFileFilter(new GeotiffFileFilter());
+                this.fileChooser.addChoosableFileFilter(new PngFileFilter());
             }
 
             this.fileChooser.setDialogTitle(title);
@@ -192,8 +234,8 @@ public class ExportImageOrElevations extends ApplicationTemplate
             if (status == JFileChooser.APPROVE_OPTION)
             {
                 destFile = this.fileChooser.getSelectedFile();
-                if (!destFile.getName().endsWith(".tif"))
-                    destFile = new File(destFile.getPath() + ".tif");
+                if (!destFile.getName().endsWith(".png"))
+                    destFile = new File(destFile.getPath() + ".png");
             }
             return destFile;
         }
@@ -295,7 +337,7 @@ public class ExportImageOrElevations extends ApplicationTemplate
                     if (layer.isEnabled() && layer.isLayerActive(dc) && layer.isLayerInView(dc))
                         currentLayer = layer;
 
-                    if (layer.getName().equals(new String("i-cubed Landsat")))
+                    if (layer.getName().equals(new String("Bing Imagery")))
                         break;
                 }
             }
@@ -324,7 +366,7 @@ public class ExportImageOrElevations extends ApplicationTemplate
                 {
                     try
                     {
-                        BufferedImage image = captureImage(activeLayer, selectedSector, 2048);
+                        BufferedImage image = captureImage(activeLayer, selectedSector, 4096);
 
                         if (null != image)
                         {
@@ -473,15 +515,18 @@ public class ExportImageOrElevations extends ApplicationTemplate
             params.setValue(AVKey.PIXEL_FORMAT, AVKey.IMAGE);
             params.setValue(AVKey.BYTE_ORDER, AVKey.BIG_ENDIAN);
 
-            GeotiffWriter writer = new GeotiffWriter(gtFile);
-            try
-            {
-                writer.write(BufferedImageRaster.wrapAsGeoreferencedRaster(image, params));
-            }
-            finally
-            {
-                writer.close();
-            }
+            // 输出为PNG
+            ImageIO.write(image, "png", gtFile);
+
+//            GeotiffWriter writer = new GeotiffWriter(gtFile);
+//            try
+//            {
+//                writer.write(BufferedImageRaster.wrapAsGeoreferencedRaster(image, params));
+//            }
+//            finally
+//            {
+//                writer.close();
+//            }
         }
 
         private void writeElevationsToFile(Sector sector, int width, int height, double[] elevations, File gtFile)
@@ -510,6 +555,7 @@ public class ExportImageOrElevations extends ApplicationTemplate
                     raster.setDoubleAtPosition(y, x, elevations[i++]);
                 }
             }
+
 
             GeotiffWriter writer = new GeotiffWriter(gtFile);
             try
