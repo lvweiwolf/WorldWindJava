@@ -221,7 +221,7 @@ public class ExportImageOrElevations extends ApplicationTemplate
             {
                 this.fileChooser = new JFileChooser();
                 this.fileChooser.setCurrentDirectory(new File(Configuration.getUserHomeDirectory()));
-                this.fileChooser.addChoosableFileFilter(new PngFileFilter());
+                this.fileChooser.addChoosableFileFilter(new JPEGFileFilter());
             }
 
             this.fileChooser.setDialogTitle(title);
@@ -235,8 +235,8 @@ public class ExportImageOrElevations extends ApplicationTemplate
             if (status == JFileChooser.APPROVE_OPTION)
             {
                 destFile = this.fileChooser.getSelectedFile();
-                if (!destFile.getName().endsWith(".png"))
-                    destFile = new File(destFile.getPath() + ".png");
+                if (!destFile.getName().endsWith(".jpeg"))
+                    destFile = new File(destFile.getPath() + ".jpeg");
             }
             return destFile;
         }
@@ -367,7 +367,7 @@ public class ExportImageOrElevations extends ApplicationTemplate
                 {
                     try
                     {
-                        BufferedImage image = captureImage(activeLayer, selectedSector, 512);
+                        BufferedImage image = captureImage(activeLayer, selectedSector, 8192);
 
                         if (null != image)
                         {
@@ -451,7 +451,7 @@ public class ExportImageOrElevations extends ApplicationTemplate
             if (layer.isImageFormatAvailable("image/png"))
                 mimeType = "image/png";
             else if (layer.isImageFormatAvailable("image/jpg"))
-                mimeType = "image/jpg";
+                mimeType = "image/jpeg";
 
             WMSTiledImageLayer.setComposeWithSuper(true);
             return layer.composeImageForSector(this.selectedSector, width, height, 1d, -1, mimeType, true, null, 30000);
