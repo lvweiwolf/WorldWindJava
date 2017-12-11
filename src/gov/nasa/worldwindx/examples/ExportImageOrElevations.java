@@ -9,6 +9,7 @@ package gov.nasa.worldwindx.examples;
 import gov.nasa.worldwind.Configuration;
 import gov.nasa.worldwind.avlist.*;
 import gov.nasa.worldwind.data.*;
+import gov.nasa.worldwind.wms.WMSTiledImageLayer;
 import gov.nasa.worldwindx.examples.util.SectorSelector;
 import gov.nasa.worldwind.formats.tiff.GeotiffWriter;
 import gov.nasa.worldwind.geom.*;
@@ -366,7 +367,7 @@ public class ExportImageOrElevations extends ApplicationTemplate
                 {
                     try
                     {
-                        BufferedImage image = captureImage(activeLayer, selectedSector, 4096);
+                        BufferedImage image = captureImage(activeLayer, selectedSector, 512);
 
                         if (null != image)
                         {
@@ -452,6 +453,7 @@ public class ExportImageOrElevations extends ApplicationTemplate
             else if (layer.isImageFormatAvailable("image/jpg"))
                 mimeType = "image/jpg";
 
+            WMSTiledImageLayer.setComposeWithSuper(true);
             return layer.composeImageForSector(this.selectedSector, width, height, 1d, -1, mimeType, true, null, 30000);
         }
 
