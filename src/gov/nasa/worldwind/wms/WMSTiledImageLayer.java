@@ -29,6 +29,8 @@ public class WMSTiledImageLayer extends BasicTiledImageLayer
             "image/dds", "image/png", "image/jpeg"
         };
 
+    private static boolean _composeWithSuper = false;
+
     public WMSTiledImageLayer(AVList params)
     {
         super(params);
@@ -99,6 +101,15 @@ public class WMSTiledImageLayer extends BasicTiledImageLayer
         params.setValue(AVKey.TILE_URL_BUILDER, new URLBuilder(params));
 
         return params;
+    }
+
+    // 设置该类的composeImageForSector是否使用父类TiledImageLayer的实现
+    public static void setComposeWithSuper(boolean composeWithSuper){
+        _composeWithSuper = composeWithSuper;
+    }
+
+    public static boolean getComposeWithSuper(){
+        return _composeWithSuper;
     }
 
     /**
@@ -306,7 +317,7 @@ public class WMSTiledImageLayer extends BasicTiledImageLayer
             throw new IllegalArgumentException(message);
         }
 
-        if (canvasWidth < 1 || canvasWidth > 2048 || canvasHeight < 1 || canvasHeight > 2048)
+        if (WMSTiledImageLayer.getComposeWithSuper())
         {
             return super.composeImageForSector(sector, canvasWidth, canvasHeight, aspectRatio,
                 levelNumber, mimeType, abortOnError, image, timeout);
