@@ -306,6 +306,12 @@ public class WMSTiledImageLayer extends BasicTiledImageLayer
             throw new IllegalArgumentException(message);
         }
 
+        if (canvasWidth < 1 || canvasWidth > 2048 || canvasHeight < 1 || canvasHeight > 2048)
+        {
+            return super.composeImageForSector(sector, canvasWidth, canvasHeight, aspectRatio,
+                levelNumber, mimeType, abortOnError, image, timeout);
+        }
+
         Level requestedLevel;
         if ((levelNumber >= 0) && (levelNumber < this.getLevels().getNumLevels()))
             requestedLevel = this.getLevels().getLevel(levelNumber);
