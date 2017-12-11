@@ -94,30 +94,33 @@ public class BasicElevationModelBulkDownloader extends BulkRetrievalThread
             this.progress.setTotalSize(this.progress.getTotalCount() * estimateAverageTileSize());
 
             // Determine and request missing tiles by level/region
-            for (int levelNumber = 0; levelNumber <= this.level; levelNumber++)
+            // for (int levelNumber = 0; levelNumber <= this.level; levelNumber++)
+            // {
+            //    if (elevationModel.getLevels().isLevelEmpty(levelNumber))
+            //        continue;
+
+            int levelNumber = this.level;
+
+            int div = this.computeRegionDivisions(this.sector, levelNumber, MAX_TILE_COUNT_PER_REGION);
+            Iterator<Sector> regionsIterator = this.getRegionIterator(this.sector, div);
+
+            Sector region;
+            while (regionsIterator.hasNext())
             {
-                if (elevationModel.getLevels().isLevelEmpty(levelNumber))
-                    continue;
+                region = regionsIterator.next();
+                // Determine missing tiles
+                this.missingTiles = getMissingTilesInSector(region, levelNumber);
 
-                int div = this.computeRegionDivisions(this.sector, levelNumber, MAX_TILE_COUNT_PER_REGION);
-                Iterator<Sector> regionsIterator = this.getRegionIterator(this.sector, div);
-
-                Sector region;
-                while (regionsIterator.hasNext())
+                // Submit missing tiles requests at intervals
+                while (this.missingTiles.size() > 0)
                 {
-                    region = regionsIterator.next();
-                    // Determine missing tiles
-                    this.missingTiles = getMissingTilesInSector(region, levelNumber);
-
-                    // Submit missing tiles requests at intervals
-                    while (this.missingTiles.size() > 0)
-                    {
-                        submitMissingTilesRequests();
-                        if (this.missingTiles.size() > 0)
-                            Thread.sleep(RETRIEVAL_SERVICE_POLL_DELAY);
-                    }
+                    submitMissingTilesRequests();
+                    if (this.missingTiles.size() > 0)
+                        Thread.sleep(RETRIEVAL_SERVICE_POLL_DELAY);
                 }
             }
+            // }
+
             // Set progress to 100%
             this.progress.setTotalCount(this.progress.getCurrentCount());
             this.progress.setTotalSize(this.progress.getCurrentSize());
@@ -251,11 +254,15 @@ public class BasicElevationModelBulkDownloader extends BulkRetrievalThread
         int maxLevel = computeLevelForResolution(sector, resolution);
         // Total expected tiles
         long totCount = 0;
-        for (int levelNumber = 0; levelNumber <= maxLevel; levelNumber++)
-        {
-            if (!this.elevationModel.getLevels().isLevelEmpty(levelNumber))
-                totCount += this.countTilesInSector(sector, levelNumber);
-        }
+        // for (int levelNumber = 0; levelNumber <= maxLevel; levelNumber++)
+        // {
+        //    if (!this.elevationModel.getLevels().isLevelEmpty(levelNumber))
+        //        totCount += this.countTilesInSector(sector, levelNumber);
+        // }
+
+        if (!this.elevationModel.getLevels().isLevelEmpty(maxLevel))
+            totCount = this.countTilesInSector(sector, maxLevel);
+
         // Sample random small sized sectors at finest level
         int div = this.computeRegionDivisions(this.sector, maxLevel, 36); // max 6x6 tiles per region
         Sector[] regions = computeRandomRegions(this.sector, div, numSamples);
