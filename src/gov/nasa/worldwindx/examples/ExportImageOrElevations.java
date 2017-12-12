@@ -9,6 +9,7 @@ package gov.nasa.worldwindx.examples;
 import gov.nasa.worldwind.Configuration;
 import gov.nasa.worldwind.avlist.*;
 import gov.nasa.worldwind.data.*;
+import gov.nasa.worldwind.util.*;
 import gov.nasa.worldwind.wms.WMSTiledImageLayer;
 import gov.nasa.worldwindx.examples.util.SectorSelector;
 import gov.nasa.worldwind.formats.tiff.GeotiffWriter;
@@ -16,9 +17,9 @@ import gov.nasa.worldwind.geom.*;
 import gov.nasa.worldwind.globes.*;
 import gov.nasa.worldwind.layers.*;
 import gov.nasa.worldwind.render.DrawContext;
-import gov.nasa.worldwind.util.Logging;
 
 import javax.imageio.ImageIO;
+import javax.swing.filechooser.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -213,6 +214,36 @@ public class ExportImageOrElevations extends ApplicationTemplate
             }
         }
 
+        public class ExportImagePackage
+        {
+            private final File imageFile;
+            private final File jgwFile;
+            private final String jgw;
+            private final BufferedImage image;
+
+            public ExportImagePackage(BufferedImage image, File imageFile, String jgw, File jgwFile){
+                this.image = image;
+                this.imageFile = imageFile;
+                this.jgwFile = jgwFile;
+                this.jgw = jgw;
+            }
+
+            public void doSave() throws IOException
+            {
+                // 存储图片
+                ImageIO.write(this.image, "jpeg", imageFile);
+                // 存储jgw文件
+                FileWriter fw = new FileWriter(jgwFile);
+                fw.write(jgw);
+                fw.flush();
+                fw.close();
+            }
+
+            public String getFileName() {
+                return imageFile.getName();
+            }
+        }
+
         private File selectDestinationFile(String title, String filename)
         {
             File destFile = null;
@@ -346,11 +377,11 @@ public class ExportImageOrElevations extends ApplicationTemplate
             if (null == currentLayer)
                 return;
 
-            final File saveToFile = this.selectDestinationFile("Select a destination GeoTiff file to save the image",
-                "image");
-
-            if (saveToFile == null)
-                return;
+//            final File saveToFile = this.selectDestinationFile("Select a destination GeoTiff file to save the image",
+//                "image");
+//
+//            if (saveToFile == null)
+//                return;
 
             final TiledImageLayer activeLayer = currentLayer;
 
@@ -367,20 +398,26 @@ public class ExportImageOrElevations extends ApplicationTemplate
                 {
                     try
                     {
-                        BufferedImage image = captureImage(activeLayer, selectedSector, 8192);
+                       // BufferedImage image = captureImage(activeLayer, selectedSector, 8192);
+                        ExportImagePackage[] exportImages = captureImage(activeLayer, selectedSector);
 
-                        if (null != image)
-                        {
-                            jd.setTitle("Writing image to " + saveToFile.getName());
-                            writeImageToFile(selectedSector, image, saveToFile);
-                            jd.setVisible(false);
-                            JOptionPane.showMessageDialog(wwjPanel, "Image saved into the " + saveToFile.getName());
-                        }
-                        else
-                        {
-                            jd.setVisible(false);
-                            JOptionPane.showMessageDialog(wwjPanel,
-                                "Attempt to save image to the " + saveToFile.getName() + " has failed.");
+
+                        for (int i = 0; i < exportImages.length; ++i) {
+
+                            if (null != exportImages[i])
+                            {
+                                jd.setTitle("Writing image to " + exportImages[i].getFileName());
+                                //writeImageToFile(null, images[i], files[i]);
+                                exportImages[i].doSave();
+                                jd.setVisible(false);
+                                JOptionPane.showMessageDialog(wwjPanel, "Image saved into the " + exportImages[i].getFileName());
+                            }
+                            else
+                            {
+                                jd.setVisible(false);
+                                JOptionPane.showMessageDialog(wwjPanel,
+                                    "Attempt to save image to the " + exportImages[i].getFileName() + " has failed.");
+                            }
                         }
                     }
                     catch (Exception e)
@@ -457,6 +494,212 @@ public class ExportImageOrElevations extends ApplicationTemplate
             return layer.composeImageForSector(this.selectedSector, width, height, 1d, -1, mimeType, true, null, 30000);
         }
 
+        private ExportImagePackage[] captureImage(TiledImageLayer layer, Sector sector)
+            throws Exception
+        {
+            String mimeType = layer.getDefaultImageFormat();
+            return composeImageForSector(layer, sector, -1, mimeType);
+        }
+
+        private BufferedImage composeImageForSubSector(TiledImageLayer layer,  Sector sector,int canvasWidth, int canvasHeight, double aspectRatio,
+            int levelNumber, String mimeType, boolean abortOnError, BufferedImage image, int timeout) throws Exception
+        {
+
+            Sector intersection = layer.getLevels().getSector().intersection(sector);
+            if (levelNumber < 0)
+            {
+                levelNumber = layer.getLevels().getLastLevel().getLevelNumber();
+            }
+            else if (levelNumber > layer.getLevels().getLastLevel().getLevelNumber())
+            {
+                Logging.logger().warning(Logging.getMessage("generic.LevelRequestedGreaterThanMaxLevel",
+                    levelNumber, layer.getLevels().getLastLevel().getLevelNumber()));
+                levelNumber = layer.getLevels().getLastLevel().getLevelNumber();
+            }
+
+            TextureTile[][] tiles = layer.getTilesInSector(intersection, levelNumber);
+            if (tiles.length == 0 || tiles[0].length == 0)
+            {
+                Logging.logger().severe(Logging.getMessage("layers.TiledImageLayer.NoImagesAvailable"));
+                return image;
+            }
+
+            if (image == null)
+                image = new BufferedImage(canvasWidth, canvasHeight, BufferedImage.TYPE_INT_RGB);
+
+            double tileCount = 0;
+            for (TextureTile[] row : tiles)
+            {
+                for (TextureTile tile : row)
+                {
+                    if (tile == null)
+                        continue;
+
+                    BufferedImage tileImage;
+                    try
+                    {
+                        tileImage = layer.getImage(tile, mimeType, timeout);
+                        Thread.sleep(1); // generates InterruptedException if thread has been interupted
+
+                        if (tileImage != null)
+                            ImageUtil.mergeImage(sector, tile.getSector(), aspectRatio, tileImage, image);
+
+                        ++tileCount;
+                        // this.firePropertyChange(AVKey.PROGRESS, tileCount / numTiles, ++tileCount / numTiles);
+                    }
+                    catch (InterruptedException e)
+                    {
+                        throw e;
+                    }
+                    catch (InterruptedIOException e)
+                    {
+                        throw e;
+                    }
+                    catch (Exception e)
+                    {
+                        if (abortOnError)
+                            throw e;
+
+                        String message = Logging.getMessage("generic.ExceptionWhileRequestingImage", tile.getPath());
+                        Logging.logger().log(java.util.logging.Level.WARNING, message, e);
+                    }
+                }
+            }
+
+            return image;
+        }
+
+        // 自定义生成导出影像方法
+        private ExportImagePackage[] composeImageForSector(TiledImageLayer layer,      // 瓦片图所在层
+                                                           Sector selectSector,        // 选中的区域用Sector的经纬度表示
+                                                           int levelNumber,            // 组成导出影像的瓦片图精细程度
+                                                           String mimeType)             // 描述图像与经纬度关系的文件
+                                                           throws Exception
+        {
+
+            int canvasWidth = 0;
+            int canvasHeight = 0;
+
+            if (selectSector == null)
+            {
+                String message = Logging.getMessage("nullValue.SectorIsNull");
+                Logging.logger().severe(message);
+                throw new IllegalArgumentException(message);
+            }
+
+            if (!layer.getLevels().getSector().intersects(selectSector))
+            {
+                String message = Logging.getMessage("generic.SectorRequestedOutsideCoverageArea",
+                                                    selectSector,
+                                                    layer.getLevels().getSector());
+                Logging.logger().severe(message);
+                throw new IllegalArgumentException(message);
+            }
+
+            Sector intersection = layer.getLevels().getSector().intersection(selectSector);
+
+            if (levelNumber < 0)
+            {
+                levelNumber = layer.getLevels().getLastLevel().getLevelNumber();
+            }
+            else if (levelNumber > layer.getLevels().getLastLevel().getLevelNumber())
+            {
+                Logging.logger().warning(Logging.getMessage("generic.LevelRequestedGreaterThanMaxLevel",
+                    levelNumber, layer.getLevels().getLastLevel().getLevelNumber()));
+                levelNumber = layer.getLevels().getLastLevel().getLevelNumber();
+            }
+
+            int numTiles = 0;
+            Angle minLatitude = Angle.fromDegrees(90);
+            Angle maxLatitude = Angle.fromDegrees(-90);
+            Angle minLongitude = Angle.fromDegrees(180);
+            Angle maxLongitude = Angle.fromDegrees(-180);
+
+            TextureTile[][] tiles = layer.getTilesInSector(intersection, levelNumber);
+            if (tiles.length == 0 || tiles[0].length == 0)
+            {
+                Logging.logger().severe(Logging.getMessage("layers.TiledImageLayer.NoImagesAvailable"));
+                return null;
+            }
+
+            for (TextureTile[] row : tiles) {
+                for (TextureTile tile : row) {
+
+                    if (tile.getSector().getMinLatitude().degrees < minLatitude.degrees)
+                        minLatitude = tile.getSector().getMinLatitude();
+
+                    if (tile.getSector().getMinLongitude().degrees < minLongitude.degrees)
+                        minLongitude = tile.getSector().getMinLongitude();
+
+                    if (tile.getSector().getMaxLatitude().degrees > maxLatitude.degrees)
+                        maxLatitude = tile.getSector().getMaxLatitude();
+
+                    if (tile.getSector().getMaxLongitude().degrees > maxLongitude.degrees)
+                        maxLongitude = tile.getSector().getMaxLongitude();
+
+                    numTiles ++;
+                }
+            }
+
+            // 计算框选Sector包含tile所占范围Sector对应宽度，用像素表示
+            if (numTiles != 0) {
+                canvasWidth = tiles[0].length * layer.getLevels().getLevel(levelNumber).getTileWidth();
+                canvasHeight = tiles.length * layer.getLevels().getLevel(levelNumber).getTileHeight();
+            }
+
+            // 按比例计算框选范围sector保存图像的场和宽
+            double sectorWidth = selectSector.getDeltaLon().divide(maxLongitude.subtract(minLongitude)) * canvasWidth;
+            double sectorHeight = selectSector.getDeltaLat().divide(maxLatitude.subtract(minLatitude)) * canvasHeight;
+            double maxSide = sectorWidth > sectorHeight ? sectorWidth : sectorHeight;
+            // 计算selectSector应该被切分成几分（横向）
+            int numParts = (int)(maxSide / 8192) + 1;
+            double deltaLatDegrees = selectSector.getDeltaLatDegrees() / numParts;
+            double deltaLonDegress = selectSector.getDeltaLonDegrees() / numParts;
+
+            ExportImagePackage []packages = new ExportImagePackage[numParts * numParts];
+
+            for (int row = 0; row < numParts; ++row) {
+                Angle subSectorMinLat = selectSector.getMinLatitude().addDegrees(row * deltaLatDegrees);
+                Angle subSectorMaxLat = subSectorMinLat.addDegrees(deltaLatDegrees);
+
+                for (int col = 0; col < numParts; ++col){
+                    Angle subSectorMinLon = selectSector.getMinLongitude().addDegrees(col * deltaLonDegress);
+                    Angle subSectorMaxLon = subSectorMinLon.addDegrees(deltaLonDegress);
+
+                    Sector subSector = new Sector(subSectorMinLat, subSectorMaxLat, subSectorMinLon, subSectorMaxLon);
+
+                    // BufferedImage image = new BufferedImage(8192, 8192, BufferedImage.TYPE_INT_RGB);
+                    BufferedImage image = composeImageForSubSector(layer, subSector, (int)(sectorWidth / numParts),
+                        (int)(sectorHeight / numParts),1.0, levelNumber, mimeType, true, null, 30000);
+
+                    packages[row * numParts + col] = makeExportImage(row, col, subSector,
+                        (int)(sectorWidth / numParts), (int)(sectorHeight / numParts), image);
+                }
+            }
+
+            return packages;
+        }
+
+        ExportImagePackage makeExportImage(int row, int col, Sector sector, int xPixel, int yPixel,
+            BufferedImage image) {
+
+            String desktopPath = FileSystemView.getFileSystemView() .getHomeDirectory().getAbsolutePath();
+            String imagePath = desktopPath + String.format("\\%d_%d.jpeg", row, col);
+            String jgwPath = desktopPath + String.format("\\%d_%d.jgw", row, col);
+            File file = new File(imagePath);
+            File jgwFile = new File(jgwPath);
+
+            String jgw = (new StringBuilder()).append(String.format("%4.17f%n", sector.getDeltaLonDegrees() / xPixel))
+                .append(String.format("%d%n", 0))
+                .append(String.format("%d%n", 0))
+                .append(String.format("-%4.17f%n", sector.getDeltaLatDegrees() / yPixel))
+                .append(String.format("%4.15f%n", sector.getMinLongitude().degrees))
+                .append(String.format("%4.15f%n", sector.getMaxLatitude().degrees))
+                .toString();
+
+            return new ExportImagePackage(image, file, jgw, jgwFile);
+        }
+
         private double[] readElevations(Sector sector, int width, int height)
         {
             double[] elevations;
@@ -507,18 +750,19 @@ public class ExportImageOrElevations extends ApplicationTemplate
             return elevations;
         }
 
+
         private void writeImageToFile(Sector sector, BufferedImage image, File gtFile)
             throws IOException
         {
-            AVList params = new AVListImpl();
+//            AVList params = new AVListImpl();
+//
+//            params.setValue(AVKey.SECTOR, sector);
+//            params.setValue(AVKey.COORDINATE_SYSTEM, AVKey.COORDINATE_SYSTEM_GEOGRAPHIC);
+//            params.setValue(AVKey.PIXEL_FORMAT, AVKey.IMAGE);
+//            params.setValue(AVKey.BYTE_ORDER, AVKey.BIG_ENDIAN);
 
-            params.setValue(AVKey.SECTOR, sector);
-            params.setValue(AVKey.COORDINATE_SYSTEM, AVKey.COORDINATE_SYSTEM_GEOGRAPHIC);
-            params.setValue(AVKey.PIXEL_FORMAT, AVKey.IMAGE);
-            params.setValue(AVKey.BYTE_ORDER, AVKey.BIG_ENDIAN);
-
-            // 输出为PNG
-            ImageIO.write(image, "png", gtFile);
+            // 输出为JPEG
+            ImageIO.write(image, "jpeg", gtFile);
 
 //            GeotiffWriter writer = new GeotiffWriter(gtFile);
 //            try
