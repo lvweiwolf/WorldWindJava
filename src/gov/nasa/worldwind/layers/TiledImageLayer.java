@@ -1454,7 +1454,7 @@ public abstract class TiledImageLayer extends AbstractLayer
         return sectorTiles;
     }
 
-    protected BufferedImage getImage(TextureTile tile, String mimeType, int timeout) throws Exception
+    public BufferedImage getImage(TextureTile tile, String mimeType, int timeout) throws Exception
     {
         // Read the image from disk.
         BufferedImage image = this.requestImage(tile, mimeType);
