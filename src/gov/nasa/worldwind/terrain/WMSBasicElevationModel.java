@@ -354,6 +354,54 @@ public class WMSBasicElevationModel extends BasicElevationModel
         return params;
     }
 
+    // 为ElevationModel添加获取Sector覆盖的所有Tile的方法
+    public Tile[][] getTilesInSector(Sector sector, int levelNumber)
+    {
+        if (sector == null)
+        {
+            String msg = Logging.getMessage("nullValue.SectorIsNull");
+            Logging.logger().severe(msg);
+            throw new IllegalArgumentException(msg);
+        }
+
+        Level targetLevel = this.getLevels().getLastLevel();
+        if (levelNumber >= 0)
+        {
+            for (int i = levelNumber; i < this.getLevels().getLastLevel().getLevelNumber(); i++)
+            {
+                if (this.getLevels().isLevelEmpty(i))
+                    continue;
+
+                targetLevel = this.getLevels().getLevel(i);
+                break;
+            }
+        }
+
+        // Collect all the tiles intersecting the input sector.
+        LatLon delta = targetLevel.getTileDelta();
+        LatLon origin = this.getLevels().getTileOrigin();
+        final int nwRow = Tile.computeRow(delta.getLatitude(), sector.getMaxLatitude(), origin.getLatitude());
+        final int nwCol = Tile.computeColumn(delta.getLongitude(), sector.getMinLongitude(), origin.getLongitude());
+        final int seRow = Tile.computeRow(delta.getLatitude(), sector.getMinLatitude(), origin.getLatitude());
+        final int seCol = Tile.computeColumn(delta.getLongitude(), sector.getMaxLongitude(), origin.getLongitude());
+
+        int numRows = nwRow - seRow + 1;
+        int numCols = seCol - nwCol + 1;
+        Tile[][] sectorTiles = new Tile[numRows][numCols];
+
+        for (int row = nwRow; row >= seRow; row--)
+        {
+            for (int col = nwCol; col <= seCol; col++)
+            {
+                TileKey key = new TileKey(targetLevel.getLevelNumber(), row, col, targetLevel.getCacheName());
+                Sector tileSector = this.getLevels().computeSectorForKey(key);
+                sectorTiles[nwRow - row][col - nwCol] = new Tile(tileSector, targetLevel, row, col);
+            }
+        }
+
+        return sectorTiles;
+    }
+
     /**
      * Appends WMS basic elevation model configuration elements to the superclass configuration document.
      *
