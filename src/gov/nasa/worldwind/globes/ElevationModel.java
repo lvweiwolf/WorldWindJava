@@ -372,6 +372,21 @@ public interface ElevationModel extends WWObject, Restorable, Disposable
         throws Exception;
 
     /**
+     * 确定框选范围内所有采集点的高程，采集点数量为1个像素一个点 {@link Sector}.
+     *
+     * @param sector    包括采集点的框选范围
+     *
+     * @throws Exception                if the method fails. Different elevation models may fail for different reasons.
+     * @throws IllegalArgumentException if either the sector, list of locations or buffer is null, if the buffer size is
+     *                                  not at least as large as the location list, or the tile width is greater than
+     *                                  the locations list length or less than 1.
+     *
+     * @return a buffer in which to put the elevations. The buffer must have at least as many elements as the
+     *         number of specified locations.
+     */
+    IExportElevationStream[] composeElevations(Sector sector) throws Exception;
+
+    /**
      * Returns the proportion of this elevation model's data that is local -- in the computer's data cache or installed
      * data filestore -- for a specified sector and target resolution.
      *

@@ -6,7 +6,7 @@
 package gov.nasa.worldwind.terrain;
 
 import gov.nasa.worldwind.geom.*;
-import gov.nasa.worldwind.globes.ElevationModel;
+import gov.nasa.worldwind.globes.*;
 import gov.nasa.worldwind.util.Logging;
 
 import java.util.*;
@@ -649,6 +649,30 @@ public class CompoundElevationModel extends AbstractElevationModel
 
             em.composeElevations(sector, latlons, tileWidth, buffer);
         }
+    }
+
+    public IExportElevationStream[] composeElevations(Sector sector) throws Exception {
+        if (sector == null)
+        {
+            String msg = Logging.getMessage("nullValue.SectorIsNull");
+            Logging.logger().severe(msg);
+            throw new IllegalArgumentException(msg);
+        }
+
+        for (ElevationModel em : this.elevationModels)
+        {
+            if (!em.isEnabled())
+                continue;
+
+            int c = em.intersects(sector);
+            if (c < 0) // no intersection
+                continue;
+
+            // em.composeElevations(sector, latlons, tileWidth, buffer);
+            return em.composeElevations(sector);
+        }
+
+        return null;
     }
 
     public void setNetworkRetrievalEnabled(boolean networkRetrievalEnabled)

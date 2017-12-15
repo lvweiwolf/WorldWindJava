@@ -10,12 +10,12 @@ import gov.nasa.worldwind.*;
 import gov.nasa.worldwind.avlist.*;
 import gov.nasa.worldwind.cache.FileStore;
 import gov.nasa.worldwind.geom.*;
-import gov.nasa.worldwind.globes.ElevationModel;
+import gov.nasa.worldwind.globes.*;
 import gov.nasa.worldwind.util.*;
 import org.w3c.dom.Element;
 
 import javax.xml.xpath.XPath;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author tag
@@ -213,6 +213,17 @@ abstract public class AbstractElevationModel extends WWObjectImpl implements Ele
             if (e != this.getMissingDataSignal() && !this.isTransparentValue(e))
                 buffer[i] = e;
         }
+    }
+
+    public IExportElevationStream[] composeElevations(Sector sector) throws Exception {
+        if (sector == null)
+        {
+            String msg = Logging.getMessage("nullValue.SectorIsNull");
+            Logging.logger().severe(msg);
+            throw new IllegalArgumentException(msg);
+        }
+
+        return null;
     }
 
     protected boolean isTransparentValue(Double value)

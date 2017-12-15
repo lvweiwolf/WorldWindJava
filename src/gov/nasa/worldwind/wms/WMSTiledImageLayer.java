@@ -324,12 +324,15 @@ public class WMSTiledImageLayer extends BasicTiledImageLayer
         }
 
         Level requestedLevel;
+
         if ((levelNumber >= 0) && (levelNumber < this.getLevels().getNumLevels()))
             requestedLevel = this.getLevels().getLevel(levelNumber);
         else
             requestedLevel = this.getLevels().getLastLevel();
+
         ComposeImageTile tile =
             new ComposeImageTile(sector, mimeType, requestedLevel, canvasWidth, canvasHeight);
+
         try
         {
             if (image == null)

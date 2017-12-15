@@ -266,19 +266,19 @@ public class ExportImageOrElevations extends ApplicationTemplate
             if (status == JFileChooser.APPROVE_OPTION)
             {
                 destFile = this.fileChooser.getSelectedFile();
-                if (!destFile.getName().endsWith(".jpeg"))
-                    destFile = new File(destFile.getPath() + ".jpeg");
+                if (!destFile.getName().endsWith(".tif"))
+                    destFile = new File(destFile.getPath() + ".tif");
             }
             return destFile;
         }
 
         public void doSaveElevations()
         {
-            final File saveToFile = this.selectDestinationFile(
-                "Select a destination GeoTiff file to save elevations", "elevation");
-
-            if (saveToFile == null)
-                return;
+//            final File saveToFile = this.selectDestinationFile(
+//                "Select a destination GeoTiff file to save elevations", "elevation");
+//
+//            if (saveToFile == null)
+//                return;
 
             final JOptionPane jop = new JOptionPane("Requesting elevations ...",
                 JOptionPane.PLAIN_MESSAGE, JOptionPane.DEFAULT_OPTION, null, new Object[] {}, null);
@@ -296,20 +296,27 @@ public class ExportImageOrElevations extends ApplicationTemplate
                         int[] size = adjustSize(selectedSector, 512);
                         int width = size[0], height = size[1];
 
-                        double[] elevations = readElevations(selectedSector, width, height);
-                        if (null != elevations)
-                        {
-                            jd.setTitle("Writing elevations to " + saveToFile.getName());
-                            writeElevationsToFile(selectedSector, width, height, elevations, saveToFile);
-                            jd.setVisible(false);
-                            JOptionPane.showMessageDialog(wwjPanel,
-                                "Elevations saved into the " + saveToFile.getName());
-                        }
-                        else
-                        {
-                            jd.setVisible(false);
-                            JOptionPane.showMessageDialog(wwjPanel,
-                                "Attempt to save elevations to the " + saveToFile.getName() + " has failed.");
+                        // double[] elevations = readElevations(selectedSector, width, height);
+                        Globe globe = getWwd().getModel().getGlobe();
+                        IExportElevationStream[] streams = globe.getElevationModel().composeElevations(selectedSector);
+
+                        for (IExportElevationStream stream : streams) {
+                            if (null != stream)
+                            {
+                                jd.setTitle("Writing elevations to " + stream.getFileName());
+                                // writeElevationsToFile(selectedSector, stream, saveToFile);
+                                stream.doSave();
+
+                                jd.setVisible(false);
+                                JOptionPane.showMessageDialog(wwjPanel,
+                                    "Elevations saved into the " + stream.getFileName());
+                            }
+                            else
+                            {
+                                jd.setVisible(false);
+                                JOptionPane.showMessageDialog(wwjPanel,
+                                    "Attempt to save elevations to the " + stream.getFileName() + " has failed.");
+                            }
                         }
                     }
                     catch (Exception e)
@@ -700,6 +707,7 @@ public class ExportImageOrElevations extends ApplicationTemplate
             return new ExportImagePackage(image, file, jgw, jgwFile);
         }
 
+
         private double[] readElevations(Sector sector, int width, int height)
         {
             double[] elevations;
@@ -775,6 +783,12 @@ public class ExportImageOrElevations extends ApplicationTemplate
 //            }
         }
 
+        private void writeElevationsToFile(Sector sector, IExportElevationStream stream, File gtFile)
+            throws IOException
+        {
+            writeElevationsToFile(sector, stream.getWidth(), stream.getHeight(), stream.getBuffer(), gtFile);
+        }
+
         private void writeElevationsToFile(Sector sector, int width, int height, double[] elevations, File gtFile)
             throws IOException
         {
@@ -794,7 +808,7 @@ public class ExportImageOrElevations extends ApplicationTemplate
             ByteBufferRaster raster = (ByteBufferRaster) ByteBufferRaster.createGeoreferencedRaster(elev32);
             // copy elevation values to the elevation raster
             int i = 0;
-            for (int y = height - 1; y >= 0; y--)
+            for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {

@@ -7,16 +7,20 @@
 package gov.nasa.worldwind.terrain;
 
 import gov.nasa.worldwind.avlist.*;
+import gov.nasa.worldwind.data.ByteBufferRaster;
 import gov.nasa.worldwind.exception.WWRuntimeException;
+import gov.nasa.worldwind.formats.tiff.GeotiffWriter;
 import gov.nasa.worldwind.geom.*;
+import gov.nasa.worldwind.globes.IExportElevationStream;
 import gov.nasa.worldwind.ogc.wms.WMSCapabilities;
 import gov.nasa.worldwind.retrieve.*;
 import gov.nasa.worldwind.util.*;
 import org.w3c.dom.*;
 
+import javax.swing.filechooser.*;
 import java.io.*;
 import java.net.*;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author tag
@@ -516,6 +520,173 @@ public class WMSBasicElevationModel extends BasicElevationModel
                 buffer[i] = value;
         }
     }
+
+    public class ExportElevationBuffer implements IExportElevationStream{
+        //private double [] buffer;
+        private BufferWrapper elevations;
+        final private Sector sector;
+        final private int width;
+        final private int height;
+        final private int row;
+        final private int col;
+
+        ExportElevationBuffer(Sector sector, int row, int col, int width, int height, BufferWrapper elevations) {
+            this.sector = sector;
+            this.width = width;
+            this.height = height;
+            this.elevations = elevations;
+            this.row = row;
+            this.col = col;
+        }
+
+        public int getWidth() {return width;}
+        public int getHeight() {return height;}
+        public String getFileName() {return String.format("%d_%d.tif", row, col);}
+        public double[] getBuffer() {return null;}
+        public BufferWrapper getBufferWrapper() {return elevations;}
+
+        private String getPath() {
+            String desktopPath = FileSystemView.getFileSystemView() .getHomeDirectory().getAbsolutePath();
+            String imagePath = desktopPath + "\\" + getFileName();
+            return imagePath;
+        }
+
+        public void doSave() throws Exception {
+            //FileWriter fw = new FileWriter(new File(getPath()));
+
+            AVList elev32 = new AVListImpl();
+
+            elev32.setValue(AVKey.SECTOR, this.sector);
+            elev32.setValue(AVKey.WIDTH, this.width);
+            elev32.setValue(AVKey.HEIGHT, this.height);
+            elev32.setValue(AVKey.COORDINATE_SYSTEM, AVKey.COORDINATE_SYSTEM_GEOGRAPHIC);
+            elev32.setValue(AVKey.PIXEL_FORMAT, AVKey.ELEVATION);
+            elev32.setValue(AVKey.DATA_TYPE, AVKey.FLOAT32);
+            elev32.setValue(AVKey.ELEVATION_UNIT, AVKey.UNIT_METER);
+            elev32.setValue(AVKey.BYTE_ORDER, AVKey.BIG_ENDIAN);
+            elev32.setValue(AVKey.MISSING_DATA_SIGNAL, (double) Short.MIN_VALUE);
+
+            ByteBufferRaster raster = (ByteBufferRaster) ByteBufferRaster.createGeoreferencedRaster(elev32);
+            // copy elevation values to the elevation raster
+            int i = 0;
+            for (int y = 0; y < this.height; y++)
+                for (int x = 0; x < this.width; x++)
+                    raster.setDoubleAtPosition(y, x, elevations.getDouble(i++));
+
+            GeotiffWriter writer = new GeotiffWriter(new File(getPath()));
+
+            try
+            {
+                writer.write(raster);
+            }
+            finally
+            {
+                writer.close();
+            }
+        }
+    }
+
+    public IExportElevationStream[] composeElevations(Sector sector) throws Exception {
+        if (sector == null) {
+            String msg = Logging.getMessage("nullValue.SectorIsNull");
+            Logging.logger().severe(msg);
+            throw new IllegalArgumentException(msg);
+        }
+
+        // int numTiles = 0;
+
+        Sector intersection = this.levels.getSector().intersection(sector);
+        int levelNumber = this.getLevels().getLastLevel().getLevelNumber();
+        Tile[][] tiles = this.getTilesInSector(intersection, levelNumber);
+
+        if (tiles.length == 0 || tiles[0].length == 0) {
+            Logging.logger().severe(Logging.getMessage("ElevationModel.NoElevationAvailable"));
+            return null;
+        }
+        // 计算每份的sector并将相应的tile合并到该sector表示的范围中
+        return  computeSectorToTile(intersection, tiles);
+    }
+
+    protected ExportElevationBuffer[] computeSectorToTile(Sector sector, Tile[][] tiles) throws Exception {
+
+        if (tiles.length == 0 || tiles[0].length == 0) {
+            String msg = Logging.getMessage("nullValue.tilesIsNull");
+            Logging.logger().severe(msg);
+            throw new IllegalArgumentException(msg);
+        }
+
+        // 计算tiles的范围
+        int tileWidth = 0;
+        int tileHeight = 0;
+        int sectorWidth = 0;
+        int sectorHeight = 0;
+        ArrayList<Sector> sectors = new ArrayList<Sector>();
+
+        for (Tile[] row : tiles)
+            for (Tile tile : row)
+                sectors.add(tile.getSector());
+
+        Sector tilesSector = Sector.union(sectors);
+        // 计算sector所占范围的像素值 width, height
+               if (tiles.length > 0){
+            tileHeight = tiles.length * this.levels.getLastLevel().getTileHeight();
+
+            if (tiles[0].length > 0)
+                tileWidth = tiles[0].length * this.levels.getLastLevel().getTileWidth();
+        }
+
+        sectorHeight = (int)(sector.getDeltaLatDegrees() / tilesSector.getDeltaLatDegrees() * tileHeight);
+        sectorWidth = (int)(sector.getDeltaLonDegrees() / tilesSector.getDeltaLonDegrees() * tileWidth);
+        // 平均切分乘n份， 参考大小2048
+        int maxSide = sectorWidth > sectorHeight ? sectorWidth : sectorHeight;
+        int numParts = (int)(maxSide / 2048) + 1;
+        int subWidth = sectorWidth / numParts;
+        int subHeight = sectorHeight / numParts;
+        double deltaLatDegrees = sector.getDeltaLatDegrees() / numParts;
+        double deltaLonDegress = sector.getDeltaLonDegrees() / numParts;
+
+//        ElevationCompositionTile[] compositionTiles = new ElevationCompositionTile[numParts * numParts];
+        ExportElevationBuffer[] buffers = new ExportElevationBuffer[numParts * numParts];
+
+        for (int row = 0; row < numParts; ++row) {
+            Angle subSectorMinLat = sector.getMinLatitude().addDegrees(row * deltaLatDegrees);
+            Angle subSectorMaxLat = subSectorMinLat.addDegrees(deltaLatDegrees);
+
+            for (int col = 0; col < numParts; ++col){
+                Angle subSectorMinLon = sector.getMinLongitude().addDegrees(col * deltaLonDegress);
+                Angle subSectorMaxLon = subSectorMinLon.addDegrees(deltaLonDegress);
+                Sector subSector = new Sector(subSectorMinLat, subSectorMaxLat, subSectorMinLon, subSectorMaxLon);
+
+                ElevationCompositionTile tile = new ElevationCompositionTile(subSector, this.getLevels().getLastLevel(),
+                    subWidth, subHeight);
+
+                this.downloadElevations(tile);
+                tile.setElevations(this.readElevations(tile.getFile().toURI().toURL()), this);
+                buffers[row * numParts + col] = new ExportElevationBuffer(subSector, row, col, subWidth, subHeight, tile.getElevations());
+            }
+        }
+
+//        double [] buffer = new double[sectorWidth * sectorHeight];
+//
+//        for (int i = 0; i < sectorHeight; ++i) {
+//            int row = i / subHeight;
+//            int rowIndex = i % subHeight;
+//
+//            for (int j = 0; j < sectorWidth; ++j) {
+//                // 计算当前象所所在行列
+//                int col = j / subWidth;
+//                int colIndex = j % subWidth;
+//
+//                ElevationCompositionTile tile = compositionTiles[row * numParts + col];
+//                buffer[i * sectorWidth + j] = tile.getElevations().getDouble(rowIndex * subWidth + colIndex);
+//            }
+//        }
+//
+//        return new ExportElevationBuffer(sectorWidth, sectorHeight, buffer);
+
+        return buffers;
+    }
+
 
     protected void downloadElevations(ElevationCompositionTile tile) throws Exception
     {
