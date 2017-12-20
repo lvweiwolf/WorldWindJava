@@ -657,30 +657,32 @@ public class ExportImageOrElevations extends ApplicationTemplate
             // 按比例计算框选范围sector保存图像的场和宽
             double sectorWidth = selectSector.getDeltaLon().divide(maxLongitude.subtract(minLongitude)) * canvasWidth;
             double sectorHeight = selectSector.getDeltaLat().divide(maxLatitude.subtract(minLatitude)) * canvasHeight;
-            double maxSide = sectorWidth > sectorHeight ? sectorWidth : sectorHeight;
+            // double maxSide = sectorWidth > sectorHeight ? sectorWidth : sectorHeight;
             // 计算selectSector应该被切分成几分（横向）
-            int numParts = (int)(maxSide / 8192) + 1;
-            double deltaLatDegrees = selectSector.getDeltaLatDegrees() / numParts;
-            double deltaLonDegress = selectSector.getDeltaLonDegrees() / numParts;
+            int numWidths = (int)(sectorWidth / 8192) + 1;
+            int numHeights = (int)(sectorHeight / 8192) + 1;
 
-            ExportImagePackage []packages = new ExportImagePackage[numParts * numParts];
+            double deltaLatDegrees = selectSector.getDeltaLatDegrees() / numHeights;
+            double deltaLonDegress = selectSector.getDeltaLonDegrees() / numWidths;
 
-            for (int row = 0; row < numParts; ++row) {
+            ExportImagePackage []packages = new ExportImagePackage[numWidths * numHeights];
+
+            for (int row = 0; row < numHeights; ++row) {
                 Angle subSectorMinLat = selectSector.getMinLatitude().addDegrees(row * deltaLatDegrees);
                 Angle subSectorMaxLat = subSectorMinLat.addDegrees(deltaLatDegrees);
 
-                for (int col = 0; col < numParts; ++col){
+                for (int col = 0; col < numWidths; ++col){
                     Angle subSectorMinLon = selectSector.getMinLongitude().addDegrees(col * deltaLonDegress);
                     Angle subSectorMaxLon = subSectorMinLon.addDegrees(deltaLonDegress);
 
                     Sector subSector = new Sector(subSectorMinLat, subSectorMaxLat, subSectorMinLon, subSectorMaxLon);
 
                     // BufferedImage image = new BufferedImage(8192, 8192, BufferedImage.TYPE_INT_RGB);
-                    BufferedImage image = composeImageForSubSector(layer, subSector, (int)(sectorWidth / numParts),
-                        (int)(sectorHeight / numParts),1.0, levelNumber, mimeType, true, null, 30000);
+                    BufferedImage image = composeImageForSubSector(layer, subSector, (int)(sectorWidth / numWidths),
+                        (int)(sectorHeight / numHeights),1.0, levelNumber, mimeType, true, null, 30000);
 
-                    packages[row * numParts + col] = makeExportImage(row, col, subSector,
-                        (int)(sectorWidth / numParts), (int)(sectorHeight / numParts), image);
+                    packages[row * numWidths + col] = makeExportImage(row, col, subSector,
+                        (int)(sectorWidth / numWidths), (int)(sectorHeight / numHeights), image);
                 }
             }
 

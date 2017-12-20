@@ -638,21 +638,23 @@ public class WMSBasicElevationModel extends BasicElevationModel
         sectorHeight = (int)(sector.getDeltaLatDegrees() / tilesSector.getDeltaLatDegrees() * tileHeight);
         sectorWidth = (int)(sector.getDeltaLonDegrees() / tilesSector.getDeltaLonDegrees() * tileWidth);
         // 平均切分乘n份， 参考大小2048
-        int maxSide = sectorWidth > sectorHeight ? sectorWidth : sectorHeight;
-        int numParts = (int)(maxSide / 2048) + 1;
-        int subWidth = sectorWidth / numParts;
-        int subHeight = sectorHeight / numParts;
-        double deltaLatDegrees = sector.getDeltaLatDegrees() / numParts;
-        double deltaLonDegress = sector.getDeltaLonDegrees() / numParts;
+        // int maxSide = sectorWidth > sectorHeight ? sectorWidth : sectorHeight;
+        // int numParts = (int)(maxSide / 2048) + 1;
+        int numWidths = (int)(sectorWidth / 2048) + 1;
+        int numHeights = (int)(sectorHeight / 2048) + 1;
+        int subWidth = sectorWidth / numWidths;
+        int subHeight = sectorHeight / numHeights;
+        double deltaLatDegrees = sector.getDeltaLatDegrees() / numHeights;
+        double deltaLonDegress = sector.getDeltaLonDegrees() / numWidths;
 
 //        ElevationCompositionTile[] compositionTiles = new ElevationCompositionTile[numParts * numParts];
-        ExportElevationBuffer[] buffers = new ExportElevationBuffer[numParts * numParts];
+        ExportElevationBuffer[] buffers = new ExportElevationBuffer[numHeights * numWidths];
 
-        for (int row = 0; row < numParts; ++row) {
+        for (int row = 0; row < numHeights; ++row) {
             Angle subSectorMinLat = sector.getMinLatitude().addDegrees(row * deltaLatDegrees);
             Angle subSectorMaxLat = subSectorMinLat.addDegrees(deltaLatDegrees);
 
-            for (int col = 0; col < numParts; ++col){
+            for (int col = 0; col < numWidths; ++col){
                 Angle subSectorMinLon = sector.getMinLongitude().addDegrees(col * deltaLonDegress);
                 Angle subSectorMaxLon = subSectorMinLon.addDegrees(deltaLonDegress);
                 Sector subSector = new Sector(subSectorMinLat, subSectorMaxLat, subSectorMinLon, subSectorMaxLon);
@@ -662,7 +664,7 @@ public class WMSBasicElevationModel extends BasicElevationModel
 
                 this.downloadElevations(tile);
                 tile.setElevations(this.readElevations(tile.getFile().toURI().toURL()), this);
-                buffers[row * numParts + col] = new ExportElevationBuffer(subSector, row, col, subWidth, subHeight, tile.getElevations());
+                buffers[row * numWidths + col] = new ExportElevationBuffer(subSector, row, col, subWidth, subHeight, tile.getElevations());
             }
         }
 
