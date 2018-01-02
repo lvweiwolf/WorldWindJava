@@ -102,6 +102,16 @@ public class MeasureToolUsage extends ApplicationTemplate
                 this.getControlPanel().add(tabbedPane, BorderLayout.EAST);
             }
 
+            try
+            {
+                UIManager.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
+                SwingUtilities.updateComponentTreeUI(this);
+            }
+            catch(Exception ex)
+            {
+                System.out.println("Exception:"+ex);
+            }
+
             this.pack();
         }
 
